@@ -11,6 +11,7 @@ import (
 )
 
 func TestIntegration_OCR2_plugins(t *testing.T) {
+	t.Setenv(string(env.EVMPlugin.Cmd), "chainlink-evm")
 	t.Setenv(string(env.MedianPlugin.Cmd), "chainlink-feeds")
 	ocr2.RunTestIntegrationOCR2(t)
 }
