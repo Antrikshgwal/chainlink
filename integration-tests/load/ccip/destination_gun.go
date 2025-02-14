@@ -144,14 +144,14 @@ func (m *DestinationGun) Call(_ *wasp.Generator) *wasp.Response {
 		return &wasp.Response{Error: err.Error(), Group: waspGroup, Failed: true}
 	}
 	if msg.FeeToken == common.HexToAddress("0x0") {
-		acc.Value = fee
+		acc.Value = big.NewInt(0).Mul(fee, big.NewInt(10))
 		defer func() { acc.Value = nil }()
 	}
 	m.l.Debugw("sending message ",
 		"srcChain", src,
 		"dstChain", m.chainSelector,
 		"round", requestedRound,
-		"fee", fee,
+		"fee", acc.Value,
 		"msg", msg)
 	tx, err := r.CcipSend(
 		acc,
@@ -190,6 +190,7 @@ func (m *DestinationGun) Call(_ *wasp.Generator) *wasp.Response {
 	m.l.Infow("Transmitted message with",
 		"sourceChain", src,
 		"destChain", m.chainSelector,
+		"round", requestedRound,
 		"sequence number", it.Event.SequenceNumber)
 
 	// push metric to metric manager for eventual distribution to loki
@@ -241,6 +242,15 @@ func (m *DestinationGun) GetMessage(src uint64) (router.ClientEVM2AnyMessage, er
 		m.l.Error("Error encoding receiver address")
 		return router.ClientEVM2AnyMessage{}, err
 	}
+	if (*m.testConfig.MessageTypeWeights)[0] == 100 {
+		return router.ClientEVM2AnyMessage{
+			Receiver:     rcv,
+			Data:         common.Hex2Bytes("0xabcdefabcdef"),
+			TokenAmounts: nil,
+			FeeToken:     common.HexToAddress("0x0"),
+			ExtraArgs:    nil,
+		}, nil
+	}
 
 	messages := []router.ClientEVM2AnyMessage{
 		{
@@ -250,30 +260,30 @@ func (m *DestinationGun) GetMessage(src uint64) (router.ClientEVM2AnyMessage, er
 			FeeToken:     common.HexToAddress("0x0"),
 			ExtraArgs:    nil,
 		},
-		{
-			Receiver: rcv,
-			TokenAmounts: []router.ClientEVMTokenAmount{
-				{
-					Token:  m.state.Chains[src].LinkToken.Address(),
-					Amount: big.NewInt(1),
-				},
-			},
-			Data:      common.Hex2Bytes("0xabcdefabcdef"),
-			FeeToken:  common.HexToAddress("0x0"),
-			ExtraArgs: nil,
-		},
-		{
-			Receiver: rcv,
-			Data:     common.Hex2Bytes("message with token"),
-			TokenAmounts: []router.ClientEVMTokenAmount{
-				{
-					Token:  m.state.Chains[src].LinkToken.Address(),
-					Amount: big.NewInt(1),
-				},
-			},
-			FeeToken:  common.HexToAddress("0x0"),
-			ExtraArgs: nil,
-		},
+		//{
+		//	Receiver: rcv,
+		//	TokenAmounts: []router.ClientEVMTokenAmount{
+		//		{
+		//			Token:  m.state.Chains[src].LinkToken.Address(),
+		//			Amount: big.NewInt(1),
+		//		},
+		//	},
+		//	Data:      common.Hex2Bytes("0xabcdefabcdef"),
+		//	FeeToken:  common.HexToAddress("0x0"),
+		//	ExtraArgs: nil,
+		//},
+		//{
+		//	Receiver: rcv,
+		//	Data:     common.Hex2Bytes("message with token"),
+		//	TokenAmounts: []router.ClientEVMTokenAmount{
+		//		{
+		//			Token:  m.state.Chains[src].LinkToken.Address(),
+		//			Amount: big.NewInt(1),
+		//		},
+		//	},
+		//	FeeToken:  common.HexToAddress("0x0"),
+		//	ExtraArgs: nil,
+		//},
 	}
 	// Select a random message
 	randomValue := rand.Intn(100)

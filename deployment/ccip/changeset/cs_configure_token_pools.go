@@ -172,6 +172,7 @@ func (c ConfigureTokenPoolContractsConfig) Validate(env deployment.Environment) 
 // The outputted MCMS proposal will update chain configurations on each pool, encompassing new chain additions and rate limit changes.
 // Removing chain support is not in scope for this changeset.
 func ConfigureTokenPoolContractsChangeset(env deployment.Environment, c ConfigureTokenPoolContractsConfig) (deployment.ChangesetOutput, error) {
+	env.Logger.Info("Initiating ConfigureTokenPoolContractsChangeset")
 	if err := c.Validate(env); err != nil {
 		return deployment.ChangesetOutput{}, fmt.Errorf("invalid ConfigureTokenPoolContractsConfig: %w", err)
 	}

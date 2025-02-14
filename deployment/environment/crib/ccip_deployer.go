@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"math/big"
 
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/v1_5_1/token_pool"
@@ -389,16 +390,20 @@ func setupLinkPools(e *deployment.Environment) (deployment.Environment, error) {
 		return *e, fmt.Errorf("failed to load onchain state: %w", err)
 	}
 
+	g := new(errgroup.Group)
 	for _, chain := range chainSelectors {
-		linkPool := state.Chains[chain].BurnMintTokenPools[changeset.LinkSymbol][deployment.Version1_5_1]
-		linkToken := state.Chains[chain].LinkToken
-		tx, err := linkToken.GrantMintAndBurnRoles(e.Chains[chain].DeployerKey, linkPool.Address())
-		_, err = deployment.ConfirmIfNoError(e.Chains[chain], tx, err)
-		if err != nil {
-			return *e, fmt.Errorf("failed to grant mint and burn roles for link pool: %w", err)
-		}
+		g.Go(func() error {
+			linkPool := state.Chains[chain].BurnMintTokenPools[changeset.LinkSymbol][deployment.Version1_5_1]
+			linkToken := state.Chains[chain].LinkToken
+			tx, err := linkToken.GrantMintAndBurnRoles(e.Chains[chain].DeployerKey, linkPool.Address())
+			_, err = deployment.ConfirmIfNoError(e.Chains[chain], tx, err)
+			if err != nil {
+				return fmt.Errorf("failed to grant mint and burn roles for link pool: %w", err)
+			}
+			return nil
+		})
 	}
-	return env, err
+	return env, g.Wait()
 }
 
 func setupLanes(e *deployment.Environment, state changeset.CCIPOnChainState) (deployment.Environment, error) {

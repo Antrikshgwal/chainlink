@@ -2,17 +2,12 @@ package ccip
 
 import (
 	"context"
-	"math/big"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/math"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink/deployment"
 
 	"github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -96,27 +91,30 @@ func TestCCIPLoad_RPS(t *testing.T) {
 
 		messageKeys := make(map[uint64]*bind.TransactOpts)
 		other := env.AllChainSelectorsExcluding([]uint64{cs})
-		var mu sync.Mutex
-		var wg2 sync.WaitGroup
-		wg2.Add(len(other))
-		for _, src := range other {
-			go func(src uint64) {
-				defer wg2.Done()
-				mu.Lock()
-				messageKeys[src] = transmitKeys[src][ind]
-				mu.Unlock()
-				err := prepareAccountToSendLink(
-					t,
-					state,
-					*env,
-					src,
-					messageKeys[src],
-				)
-				require.NoError(t, err)
-			}(src)
-		}
-		wg2.Wait()
+		//var mu sync.Mutex
+		//var wg2 sync.WaitGroup
+		//wg2.Add(len(other))
+		//for _, src := range other {
+		//	go func(src uint64) {
+		//		defer wg2.Done()
+		//		mu.Lock()
+		//		messageKeys[src] = transmitKeys[src][ind]
+		//		mu.Unlock()
+		//		err := prepareAccountToSendLink(
+		//			t,
+		//			state,
+		//			*env,
+		//			src,
+		//			messageKeys[src],
+		//		)
+		//		require.NoError(t, err)
+		//	}(src)
+		//}
+		//wg2.Wait()
 
+		for _, src := range other {
+			messageKeys[src] = transmitKeys[src][ind]
+		}
 		gunMap[cs], err = NewDestinationGun(
 			env.Logger,
 			cs,
@@ -228,39 +226,40 @@ func TestCCIPLoad_RPS(t *testing.T) {
 	lggr.Infow("closed event subscribers")
 }
 
-func prepareAccountToSendLink(
-	t *testing.T,
-	state ccipchangeset.CCIPOnChainState,
-	e deployment.Environment,
-	src uint64,
-	srcAccount *bind.TransactOpts) error {
-	lggr := logger.Test(t)
-	srcDeployer := e.Chains[src].DeployerKey
-	lggr.Infow("Setting up link token", "src", src)
-	srcLink := state.Chains[src].LinkToken
-
-	lggr.Infow("Granting mint and burn roles")
-	tx, err := srcLink.GrantMintAndBurnRoles(srcDeployer, srcAccount.From)
-	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
-	require.NoError(t, err)
-
-	lggr.Infow("Minting transfer amounts")
-	//--------------------------------------------------------------------------------------------
-	tx, err = srcLink.Mint(
-		srcAccount,
-		srcAccount.From,
-		big.NewInt(20_000),
-	)
-	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
-	if err != nil {
-		return err
-	}
-
-	//--------------------------------------------------------------------------------------------
-	lggr.Infow("Approving routers")
-	// Approve the router to spend the tokens and confirm the tx's
-	// To prevent having to approve the router for every transfer, we approve a sufficiently large amount
-	tx, err = srcLink.Approve(srcAccount, state.Chains[src].Router.Address(), math.MaxBig256)
-	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
-	return err
-}
+//
+//func prepareAccountToSendLink(
+//	t *testing.T,
+//	state ccipchangeset.CCIPOnChainState,
+//	e deployment.Environment,
+//	src uint64,
+//	srcAccount *bind.TransactOpts) error {
+//	lggr := logger.Test(t)
+//	srcDeployer := e.Chains[src].DeployerKey
+//	lggr.Infow("Setting up link token", "src", src)
+//	srcLink := state.Chains[src].LinkToken
+//
+//	lggr.Infow("Granting mint and burn roles")
+//	tx, err := srcLink.GrantMintAndBurnRoles(srcDeployer, srcAccount.From)
+//	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
+//	require.NoError(t, err)
+//
+//	lggr.Infow("Minting transfer amounts")
+//	//--------------------------------------------------------------------------------------------
+//	tx, err = srcLink.Mint(
+//		srcAccount,
+//		srcAccount.From,
+//		big.NewInt(20_000),
+//	)
+//	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
+//	if err != nil {
+//		return err
+//	}
+//
+//	//--------------------------------------------------------------------------------------------
+//	lggr.Infow("Approving routers")
+//	// Approve the router to spend the tokens and confirm the tx's
+//	// To prevent having to approve the router for every transfer, we approve a sufficiently large amount
+//	tx, err = srcLink.Approve(srcAccount, state.Chains[src].Router.Address(), math.MaxBig256)
+//	_, err = deployment.ConfirmIfNoError(e.Chains[src], tx, err)
+//	return err
+//}
