@@ -19,6 +19,7 @@ import (
 
 	commonassets "github.com/smartcontractkit/chainlink-common/pkg/assets"
 	commoncfg "github.com/smartcontractkit/chainlink-common/pkg/config"
+	"github.com/smartcontractkit/chainlink-common/pkg/config/configtest"
 	"github.com/smartcontractkit/chainlink-common/pkg/utils/hex"
 	"github.com/smartcontractkit/chainlink-framework/multinode"
 	mnCfg "github.com/smartcontractkit/chainlink-framework/multinode/config"
@@ -33,7 +34,6 @@ import (
 	"github.com/smartcontractkit/chainlink/v2/core/config"
 	"github.com/smartcontractkit/chainlink/v2/core/config/toml"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
-	"github.com/smartcontractkit/chainlink/v2/core/services/chainlink/cfgtest"
 	"github.com/smartcontractkit/chainlink/v2/core/services/keystore/keys/p2pkey"
 	"github.com/smartcontractkit/chainlink/v2/core/store/models"
 	"github.com/smartcontractkit/chainlink/v2/core/utils"
@@ -1386,7 +1386,7 @@ func TestConfig_full(t *testing.T) {
 		}
 	}
 
-	cfgtest.AssertFieldsNotNil(t, got)
+	configtest.AssertFieldsNotNil(t, got)
 }
 
 //go:embed testdata/config-invalid.toml
@@ -1734,7 +1734,7 @@ func TestConfig_setDefaults(t *testing.T) {
 	if s, err := c.TOMLString(); assert.NoError(t, err) {
 		t.Log(s, err)
 	}
-	cfgtest.AssertFieldsNotNil(t, c.Core)
+	configtest.AssertFieldsNotNil(t, c.Core)
 }
 
 func Test_validateEnv(t *testing.T) {
