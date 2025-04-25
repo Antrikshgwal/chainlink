@@ -600,6 +600,31 @@ func SendRequestSol(
 		return nil, err
 	}
 
+	staticAccounts := solana.PublicKeySlice{
+		s.Router,
+		s.RouterConfigPDA,
+		destinationChainStatePDA,
+		noncePDA,
+		solana.SystemProgramID,
+		solana.TokenProgramID,
+		s.FeeQuoter,
+		s.FeeQuoterConfigPDA,
+		linkFqBillingConfigPDA,
+		feeTokenFqBillingConfigPDA,
+		billingSignerPDA,
+		feeTokenReceiverATA,
+		fqDestChainPDA,
+		s.RMNRemote,
+		rmnRemoteCursesPDA,
+		s.RMNRemoteConfigPDA,
+	}
+
+	// --- 2) create+warm a single ALT with them ---
+	nonTokenLUT, err := solcommon.SetupLookupTable(ctx, client, *sender, staticAccounts)
+	if err != nil {
+		return nil, fmt.Errorf("setup non-token LUT: %w", err)
+	}
+
 	base := ccip_router.NewCcipSendInstruction(
 		destinationChainSelector,
 		message,
@@ -630,7 +655,9 @@ func SendRequestSol(
 		base.GetFeeTokenUserAssociatedAccountAccount().WRITE()
 	}
 
-	addressTables := map[solana.PublicKey]solana.PublicKeySlice{}
+	addressTables := map[solana.PublicKey]solana.PublicKeySlice{
+		nonTokenLUT: staticAccounts,
+	}
 
 	requiredAccounts := len(base.AccountMetaSlice)
 	tokenIndexes := []byte{}
@@ -639,13 +666,65 @@ func SendRequestSol(
 	solconfig.FeeQuoterProgram = s.FeeQuoter
 	solconfig.CcipRouterProgram = s.Router
 
+	pooool := solana.MustPublicKeyFromBase58("FoKi2TqTCMtUimL71z5MQSahXTmrVYVoxJQu5qxq58GY")
+	agustoken := solana.MustPublicKeyFromBase58("Xf42c5iH7GYePquhqqybpdvaWXp7JKT1RF7v6EzerhV")
+
 	// Append token accounts to the account metas
 	for _, tokenAmount := range message.TokenAmounts {
 		token := tokenAmount.Token
-		tokenPool, err := soltokens.NewTokenPool(solana.Token2022ProgramID, s.BurnMintTokenPool, token)
+		e.Logger.Infof("TOKEN:::::: %s: %s", token.String(), tokenAmount.Amount)
+
+		var tp solana.PublicKey
+		if token.Equals(agustoken) {
+			tp = solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+		} else {
+			tp = solana.Token2022ProgramID
+		}
+
+		var poolAddress solana.PublicKey
+		// todo: LnM instead of BnM - Fuji
+		if token.Equals(agustoken) {
+			poolAddress = pooool
+		} else {
+			poolAddress = s.BurnMintTokenPool
+		}
+
+		tokenPool, err := soltokens.NewTokenPool(tp, poolAddress, token)
 		if err != nil {
 			return nil, err
 		}
+
+		if token.Equals(agustoken) {
+			// log everything
+			e.Logger.Info("===========================")
+			e.Logger.Infof("%s: %s", "Token Program", tp.String())
+			e.Logger.Infof("%s: %s", "Pool Program", poolAddress.String())
+			e.Logger.Infof("%s: %s", "Token", token)
+			e.Logger.Infof("%s: %s", "Token Admin Registry", tokenPool.AdminRegistryPDA)
+			e.Logger.Info("==========================")
+
+			ttttt := solana.MustPublicKeyFromBase58("ARPYNAK7g4rEq8ESB57StLS9MrcY2NbyByGYrkpiqwL1")
+			if ttttt != tokenPool.AdminRegistryPDA {
+				panic("wrong AdminRegistryPDA")
+			}
+			var tokenAdminRegistry2 solCommon.TokenAdminRegistry
+			err = solcommon.GetAccountDataBorshInto(ctx, client, ttttt, solconfig.DefaultCommitment, &tokenAdminRegistry2)
+			if err != nil {
+				return nil, err
+			}
+			e.Logger.Infof("%s, %+v", "================", tokenAdminRegistry2)
+
+		} else {
+			// Set the token pool's lookup table address
+			var tokenAdminRegistry solCommon.TokenAdminRegistry
+			err = solcommon.GetAccountDataBorshInto(ctx, client, tokenPool.AdminRegistryPDA, solconfig.DefaultCommitment, &tokenAdminRegistry)
+			if err != nil {
+				return nil, err
+			}
+			e.Logger.Infof("%+v", tokenAdminRegistry)
+
+		}
+		e.Logger.Info("==========================")
 
 		// Set the token pool's lookup table address
 		var tokenAdminRegistry solCommon.TokenAdminRegistry
@@ -658,7 +737,13 @@ func SendRequestSol(
 
 		// invalid config account, maybe this billing stuff isn't right
 
-		chainPDA, _, err := soltokens.TokenPoolChainConfigPDA(cfg.DestChain, token, s.BurnMintTokenPool)
+		var chainPDA solana.PublicKey
+		// todo: LnM instead of BnM - Fuji
+		if token.Equals(agustoken) {
+			chainPDA, _, err = soltokens.TokenPoolChainConfigPDA(cfg.DestChain, token, pooool)
+		} else {
+			chainPDA, _, err = soltokens.TokenPoolChainConfigPDA(cfg.DestChain, token, s.BurnMintTokenPool)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -672,11 +757,10 @@ func SendRequestSol(
 
 		tokenPool.Billing[cfg.DestChain] = billingPDA
 
-		userTokenAccount, _, err := soltokens.FindAssociatedTokenAddress(solana.Token2022ProgramID, token, sender.PublicKey())
+		userTokenAccount, _, err := soltokens.FindAssociatedTokenAddress(tp, token, sender.PublicKey())
 		if err != nil {
 			return nil, err
 		}
-
 		tokenMetas, tokenAddressTables, err := soltokens.ParseTokenLookupTableWithChain(ctx, client, tokenPool, userTokenAccount, cfg.DestChain)
 		if err != nil {
 			return nil, err
@@ -684,6 +768,7 @@ func SendRequestSol(
 
 		tokenIndexes = append(tokenIndexes, byte(len(base.AccountMetaSlice)-requiredAccounts))
 		base.AccountMetaSlice = append(base.AccountMetaSlice, tokenMetas...)
+
 		maps.Copy(addressTables, tokenAddressTables)
 	}
 
@@ -697,7 +782,7 @@ func SendRequestSol(
 	// for some reason onchain doesn't see extraAccounts
 
 	ixs := []solana.Instruction{ix}
-	result, err := solcommon.SendAndConfirmWithLookupTables(ctx, client, ixs, *sender, solconfig.DefaultCommitment, addressTables, solcommon.AddComputeUnitLimit(300_000))
+	result, err := solcommon.SendAndConfirmWithLookupTables(ctx, client, ixs, *sender, solconfig.DefaultCommitment, addressTables, solcommon.AddComputeUnitLimit(1_300_000))
 	if err != nil {
 		return nil, err
 	}
