@@ -26,4 +26,7 @@ plugins:
       moduleURI: "github.com/smartcontractkit/capabilities/workflowevent"
       gitRef: "86191e815fb879118fb303bfd974a120c1945daa"
       installPath: "github.com/smartcontractkit/capabilities/workflowevent"
-
+  ton:
+    - moduleURI: "github.com/smartcontractkit/chainlink-ton"
+      gitRef: "53802cbe57d3e2eccb8381515ed54c83147c000b"
+      installPath: "./cmd/chainlink-ton"

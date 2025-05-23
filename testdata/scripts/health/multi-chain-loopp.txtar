@@ -41,6 +41,13 @@ fj293fbBnlQ!f9vNs
 [Webserver]
 HTTPPort = $PORT
 
+[[Aptos]]
+ChainID = '42'
+
+[[Aptos.Nodes]]
+Name = 'primary'
+URL = 'http://aptos.blockchain'
+
 [[Cosmos]]
 ChainID = 'Foo'
 
@@ -70,7 +77,24 @@ ChainID = 'Baz'
 Name = 'primary'
 URL = 'http://stark.node'
 
+#[[Ton]]
+#ChainID = 'example'
+
+#[[Ton.Nodes]]
+#Name = 'node'
+#URL = 'https://ton.rpc'
+
+[[Tron]]
+ChainID = 'fake'
+
+[[Tron.Nodes]]
+Name = 'example'
+URL = 'http://tron.org'
+
 -- out.txt --
+ok Aptos.test.RelayerService
+!  Aptos.test.RelayerService.PluginRelayerClient.RelayerClient
+	context deadline exceeded
 ok Cosmos.Foo.RelayerService
 ok Cosmos.Foo.RelayerService.PluginRelayerClient
 ok Cosmos.Foo.RelayerService.PluginRelayerClient.PluginCosmos
@@ -116,15 +140,39 @@ ok StarkNet.Baz.RelayerService.PluginRelayerClient.PluginStarknet.Chain
 ok StarkNet.Baz.RelayerService.PluginRelayerClient.PluginStarknet.Chain.Txm
 ok StarkNet.Baz.RelayerService.PluginRelayerClient.PluginStarknet.Relayer
 ok TelemetryManager
+!  Tron.fake.RelayerService
+	plugin unavailable
 ok WorkflowStore
 
 -- out-unhealthy.txt --
+!  Aptos.test.RelayerService.PluginRelayerClient.RelayerClient
+	context deadline exceeded
 !  EVM.1.HeadTracker.HeadListener
 	Listener connected = false, receiving heads = false
+!  Tron.fake.RelayerService
+	plugin unavailable
 
 -- out.json --
 {
   "data": [
+    {
+      "type": "checks",
+      "id": "Aptos.test.RelayerService",
+      "attributes": {
+        "name": "Aptos.test.RelayerService",
+        "status": "passing",
+        "output": ""
+      }
+    },
+    {
+      "type": "checks",
+      "id": "Aptos.test.RelayerService.PluginRelayerClient.RelayerClient",
+      "attributes": {
+        "name": "Aptos.test.RelayerService.PluginRelayerClient.RelayerClient",
+        "status": "failing",
+        "output": "context deadline exceeded"
+      }
+    },
     {
       "type": "checks",
       "id": "Cosmos.Foo.RelayerService",
@@ -523,6 +571,15 @@ ok WorkflowStore
     },
     {
       "type": "checks",
+      "id": "Tron.fake.RelayerService",
+      "attributes": {
+        "name": "Tron.fake.RelayerService",
+        "status": "failing",
+        "output": "plugin unavailable"
+      }
+    },
+    {
+      "type": "checks",
       "id": "WorkflowStore",
       "attributes": {
         "name": "WorkflowStore",
@@ -537,11 +594,29 @@ ok WorkflowStore
   "data": [
     {
       "type": "checks",
+      "id": "Aptos.test.RelayerService.PluginRelayerClient.RelayerClient",
+      "attributes": {
+        "name": "Aptos.test.RelayerService.PluginRelayerClient.RelayerClient",
+        "status": "failing",
+        "output": "context deadline exceeded"
+      }
+    },
+    {
+      "type": "checks",
       "id": "EVM.1.HeadTracker.HeadListener",
       "attributes": {
         "name": "EVM.1.HeadTracker.HeadListener",
         "status": "failing",
         "output": "Listener connected = false, receiving heads = false"
+      }
+    },
+    {
+      "type": "checks",
+      "id": "Tron.fake.RelayerService",
+      "attributes": {
+        "name": "Tron.fake.RelayerService",
+        "status": "failing",
+        "output": "plugin unavailable"
       }
     }
   ]
