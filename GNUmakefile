@@ -63,23 +63,23 @@ chainlink-test: ## Build a test build of chainlink binary.
 
 .PHONY: install-loopinstall
 install-loopinstall:
-#TODO go tool?
-	go install github.com/smartcontractkit/chainlink-common/pkg/loop/cmd/loopinstall
+# XXX: This will use install from the version of chainlink-common that is in the go.mod file.
+	go get -tool github.com/smartcontractkit/chainlink-common/pkg/loop/cmd/loopinstall
 
 .PHONY: install-plugins-public
 install-plugins-public: install-loopinstall ## Build & install public remote LOOPP binaries (plugins).
 	@if [ -n "$(CL_LOOPINSTALL_OUTPUT_DIR)" ]; then \
-		loopinstall --concurrency 5 --output-installation-artifacts $(CL_LOOPINSTALL_OUTPUT_DIR)/public.json ./plugins/plugins.public.yaml; \
+		go tool loopinstall --concurrency 5 --output-installation-artifacts $(CL_LOOPINSTALL_OUTPUT_DIR)/public.json ./plugins/plugins.public.yaml; \
 	else \
-		loopinstall --concurrency 5 ./plugins/plugins.public.yaml; \
+		go tool loopinstall --concurrency 5 ./plugins/plugins.public.yaml; \
 	fi
 
 .PHONY: install-plugins-private
 install-plugins-private: install-loopinstall ## Build & install private remote LOOPP binaries (plugins).
 	if [ -n "$(CL_LOOPINSTALL_OUTPUT_DIR)" ]; then \
-		GOPRIVATE=github.com/smartcontractkit/* loopinstall --concurrency 5 --output-installation-artifacts $(CL_LOOPINSTALL_OUTPUT_DIR)/private.json ./plugins/plugins.private.yaml; \
+		GOPRIVATE=github.com/smartcontractkit/* go tool loopinstall --concurrency 5 --output-installation-artifacts $(CL_LOOPINSTALL_OUTPUT_DIR)/private.json ./plugins/plugins.private.yaml; \
 	else \
-		GOPRIVATE=github.com/smartcontractkit/* loopinstall --concurrency 5 ./plugins/plugins.private.yaml; \
+		GOPRIVATE=github.com/smartcontractkit/* go tool loopinstall --concurrency 5 ./plugins/plugins.private.yaml; \
 	fi
 
 .PHONY: install-plugins-local
