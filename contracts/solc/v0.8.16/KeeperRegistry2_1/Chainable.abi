@@ -1,0 +1,1 @@
+[{"inputs":[{"internalType":"address","name":"fallbackAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"stateMutability":"payable","type":"fallback"},{"inputs":[],"name":"fallbackTo","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]
